@@ -152,16 +152,35 @@ function evaluate(headers: Map<string, string>): Finding[] {
 }
 
 function parseArgs(argv: string[]): { input: string } {
-  const inputIdx = argv.indexOf("--input");
-  if (inputIdx !== -1 && argv[inputIdx + 1]) {
-    return { input: argv[inputIdx + 1] };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--input" || argv[i] === "-i") {
+      const input = argv[i + 1];
+      if (!input || input.startsWith("-")) throw new Error(`${argv[i]} requires a file path`);
+      return { input };
+    }
+    throw new Error(`unknown argument: ${argv[i]}`);
   }
   return { input: "headers.txt" };
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const raw = fs.readFileSync(args.input, "utf-8");
+  let args: { input: string };
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (err) {
+    console.error(`error: ${(err as Error).message}`);
+    console.error("usage: header-sentry [--input FILE]");
+    process.exitCode = 2;
+    return;
+  }
+  let raw: string;
+  try {
+    raw = fs.readFileSync(args.input, "utf-8");
+  } catch (err) {
+    console.error(`error: cannot read ${args.input}: ${(err as Error).message}`);
+    process.exitCode = 2;
+    return;
+  }
   const headers = parseHeaders(raw);
   const findings = evaluate(headers);
 
